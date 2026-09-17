@@ -32,9 +32,12 @@ Google Calendar → Other calendars → `+` → From URL → paste the feed URL.
 ## How It Works
 
 1. A GitHub Action runs every 6 hours (`.github/workflows/build_ics.yml`)
-2. `src/generate_ics.py` fetches each configured season's `game-scores` and
-   `standings` JSON from the Bond Sports API
-3. The team's numeric ID is found by name, games are filtered to that team
+2. `src/generate_ics.py` lists every season of the configured Bond Sports
+   program, loads each season's competition and stages, and keeps the ones
+   where a team with the configured name plays (new seasons are picked up
+   automatically; results are cached in `docs/_state/<slug>.json`)
+3. For each season it fetches `game-scores` and `standings`, finds the team's
+   numeric ID by name, and filters the games to that team
 4. One `.ics` file per team is written to `docs/` and committed
 5. GitHub Pages serves `docs/`, and Google Calendar refreshes on its own
 6. If the newest game in a feed is more than three weeks old and nothing newer
@@ -53,18 +56,22 @@ teams:
     slug: "alligator-skinners"        # -> docs/alligator-skinners.ics
     aliases:                          # optional extra copies of the feed (legacy URLs)
       - "alligator-skinners-winter-2026-d3"
-    seasons:
+    program_id: 12070                 # Bond Sports program -> seasons are auto-discovered
+    seasons:                          # optional explicit seasons, always included
       - league_name: "Winter 2026 Division 3"
         competition_id: "180251ce-9fbc-4153-b7f6-ce3530a2c7f9"
         stage_id: 153
 ```
 
-### Adding a season
+### New seasons
 
-Add another entry under `seasons:`. The competition ID (a UUID) and stage ID
-come from the Bond Sports schedule/standings page for the league. The team ID
-is resolved automatically by matching `name` against the teams in the schedule;
-set `team_id:` on a season only if the name differs that season.
+Nothing to do. `program_id` is the number in the league's Bond Sports URL
+(`bondsports.co/activity/programs/adult-hockey/12070/season/...`), and every
+season of that program is checked on each run. If the team ever plays under a
+different program, change `program_id` or add the season under `seasons:`
+(competition UUID + stage ID from the season's `/competition` page). The team
+ID is resolved by matching `name` against the schedule; set `team_id:` on a
+season only if the name differs that season.
 
 Optional per-team keys: `team_names` (alternate spellings to match),
 `calendar_name`, `opponent_recent_max`, `head_to_head_max`.

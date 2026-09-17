@@ -28,7 +28,8 @@ teams:
     calendar_name: "..."              # optional
     opponent_recent_max: 20           # optional
     head_to_head_max: 20              # optional
-    seasons:
+    program_id: 12070                 # optional: Bond Sports program -> seasons auto-discovered
+    seasons:                          # optional: explicit seasons (always included)
       - league_name: "Winter 2026 Division 3"
         competition_id: "<bond sports competition uuid>"
         stage_id: 153
@@ -38,7 +39,10 @@ teams:
         # standings_api_url: ... standings
 
 All seasons of a team are merged into one .ics so the subscription URL never
-changes between seasons. Standings snapshots are persisted under
+changes between seasons. With `program_id`, every season of that Bond Sports
+program is checked for a team matching `name`, so new seasons are picked up
+automatically (see discover_team_seasons). Discovered seasons are cached in the
+state file so the feed survives a discovery outage. Standings snapshots are persisted under
 docs/_state/<slug>.json (keyed by Bond Sports event id, which is global).
 """
 
@@ -134,6 +138,7 @@ class TeamRef:
     id: int
     name: str
     score: Optional[int]
+    division_name: Optional[str] = None
 
 @dataclass
 class SpaceRef:
@@ -187,11 +192,13 @@ def parse_games(raw_games: Any) -> List[Game]:
                     id=int(g["homeTeam"]["id"]),
                     name=str(g["homeTeam"]["name"]),
                     score=g["homeTeam"].get("score"),
+                    division_name=g["homeTeam"].get("divisionName"),
                 ),
                 away=TeamRef(
                     id=int(g["awayTeam"]["id"]),
                     name=str(g["awayTeam"]["name"]),
                     score=g["awayTeam"].get("score"),
+                    division_name=g["awayTeam"].get("divisionName"),
                 ),
                 space=SpaceRef(name=(g.get("space") or {}).get("name")),
             )
@@ -498,6 +505,136 @@ def team_names_in(all_games: List[Game]) -> List[str]:
 
 
 # -------------------------
+# Season auto-discovery (Bond Sports program -> seasons -> competition -> stages)
+# -------------------------
+
+def _list_items(raw: Any) -> List[Dict[str, Any]]:
+    """Accept a bare list or a paginated {data: [...]} envelope."""
+    if isinstance(raw, dict):
+        raw = raw.get("data") or raw.get("items") or []
+    return [x for x in (raw or []) if isinstance(x, dict)]
+
+
+def _parse_date(value: Any) -> Optional[datetime]:
+    if not value or not isinstance(value, str):
+        return None
+    try:
+        dt = parse_iso_z(value[:19] + ("Z" if len(value) <= 19 else value[19:]))
+    except Exception:
+        try:
+            dt = datetime.fromisoformat(value[:10])
+        except Exception:
+            return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def fetch_program_seasons(program_id: int) -> List[Dict[str, Any]]:
+    """Seasons ("sessions") of a Bond Sports program: [{id, name, start, end}, ...]."""
+    raw = fetch_json(f"{BOND_API}/programs-seasons/program/{int(program_id)}")
+    out: List[Dict[str, Any]] = []
+    for s in _list_items(raw):
+        if s.get("id") is None:
+            continue
+        out.append({
+            "id": int(s["id"]),
+            "name": str(s.get("name") or s["id"]),
+            "start": _parse_date(s.get("startDate")),
+            "end": _parse_date(s.get("endDate")),
+        })
+    return out
+
+
+def fetch_season_competition(season_id: int) -> Optional[Dict[str, Any]]:
+    """Competition attached to a program season (None if it has none)."""
+    try:
+        raw = fetch_json(f"{BOND_API}/program_seasons/{int(season_id)}/competition")
+    except requests.HTTPError as e:
+        if e.response is not None and e.response.status_code in (400, 404):
+            return None
+        raise
+    if not isinstance(raw, dict) or not raw.get("uuid"):
+        return None
+    stages = []
+    for st in raw.get("stages") or []:
+        if isinstance(st, dict) and st.get("id") is not None:
+            stages.append({"id": int(st["id"]), "name": st.get("name"), "type": st.get("stageType")})
+    stages.sort(key=lambda s: s["id"])
+    return {"uuid": str(raw["uuid"]), "name": raw.get("name"), "stages": stages}
+
+
+def discover_team_seasons(
+    program_id: int,
+    match_names: List[str],
+    cache: Dict[str, Any],
+    now: datetime,
+) -> Tuple[List[Dict[str, Any]], Dict[str, List[Game]]]:
+    """
+    Walk every season of the program and return the (competition, stage) pairs in
+    which a team matching `match_names` plays, plus the games already fetched.
+
+    `cache` (persisted in the state file) remembers stages already checked:
+      cache["stages"][f"{uuid}:{stage_id}"] = {"team": bool, "league_name": str, "season_name": str}
+    Positive entries are kept forever (old seasons stay in the feed even if the
+    program stops listing them). Negative entries are re-checked while the
+    season is still running, since schedules can be published late.
+    """
+    stage_cache: Dict[str, Any] = cache.setdefault("stages", {})
+    seasons_out: List[Dict[str, Any]] = []
+    prefetched: Dict[str, List[Game]] = {}
+
+    def add_from_cache(key: str, entry: Dict[str, Any]) -> None:
+        uuid, stage_id = key.split(":")
+        seasons_out.append({
+            "league_name": entry.get("league_name") or entry.get("season_name") or "League",
+            "competition_id": uuid,
+            "stage_id": int(stage_id),
+            "discovered": True,
+        })
+
+    seen_keys = set()
+    for season in fetch_program_seasons(program_id):
+        comp = fetch_season_competition(season["id"])
+        if not comp:
+            continue
+        for st in comp["stages"]:
+            key = f"{comp['uuid']}:{st['id']}"
+            seen_keys.add(key)
+            cached = stage_cache.get(key)
+            season_over = season["end"] is not None and season["end"] < now - timedelta(days=7)
+            if cached and cached.get("team"):
+                add_from_cache(key, cached)
+                continue
+            if cached and not cached.get("team") and season_over:
+                continue
+
+            games = parse_games(fetch_json(f"{BOND_API}/competitions/{comp['uuid']}/stages/{st['id']}/game-scores"))
+            team_id = resolve_team_id(games, match_names)
+            entry = {"team": team_id is not None, "season_name": season["name"], "stage_name": st.get("name")}
+            if team_id is not None:
+                mine = next((t for g in games for t in (g.home, g.away) if t.id == team_id), None)
+                division = (mine.division_name if mine else None) or ""
+                # e.g. "Fall 2026: Division 3"; fall back to the season name
+                league_name = division.replace(":", "") if division else season["name"]
+                if (st.get("type") or "").lower() == "playoffs" or (st.get("name") or "").lower() == "playoffs":
+                    league_name = f"{league_name} Playoffs"
+                entry["league_name"] = league_name
+                prefetched[key] = games
+                print(f"  discovered: {league_name} (competition {comp['uuid']}, stage {st['id']}, team id {team_id})")
+            stage_cache[key] = entry
+            if entry["team"]:
+                add_from_cache(key, entry)
+
+    # Seasons the program no longer lists but that we know the team played in.
+    for key, entry in stage_cache.items():
+        if entry.get("team") and key not in seen_keys:
+            add_from_cache(key, entry)
+
+    return seasons_out, prefetched
+
+
+# -------------------------
 # Main
 # -------------------------
 
@@ -552,13 +689,35 @@ def main() -> None:
                 "standings_api_url": team_entry.get("standings_api_url"),
                 "team_id": (team_entry.get("my_team_ids") or [None])[0],
             })
-        if not seasons:
-            raise SystemExit(f"Config error for {slug}: no seasons configured.")
-
         namespace = slug
         state_path = state_dir / f"{namespace}.json"
         state = load_state(state_path)
         state_events: Dict[str, Any] = state.setdefault("events", {})
+
+        # Auto-discovery of seasons via the Bond Sports program.
+        prefetched: Dict[str, List[Game]] = {}
+        program_id = team_entry.get("program_id")
+        if program_id:
+            discovery_cache: Dict[str, Any] = state.setdefault("discovery", {})
+            try:
+                discovered, prefetched = discover_team_seasons(int(program_id), match_names, discovery_cache, now)
+            except Exception as e:  # network / API change: fall back to what we already know
+                print(f"WARN {slug}: season discovery failed ({e}); using cached seasons.")
+                discovered = []
+                for key, entry in (discovery_cache.get("stages") or {}).items():
+                    if entry.get("team"):
+                        uuid, stage_id = key.split(":")
+                        discovered.append({
+                            "league_name": entry.get("league_name") or entry.get("season_name") or "League",
+                            "competition_id": uuid, "stage_id": int(stage_id), "discovered": True,
+                        })
+            known = {(str(s.get("competition_id")), int(s["stage_id"])) for s in seasons if s.get("competition_id")}
+            for d in discovered:
+                if (d["competition_id"], d["stage_id"]) not in known:
+                    seasons.append(d)
+                    known.add((d["competition_id"], d["stage_id"]))
+        if not seasons:
+            raise SystemExit(f"Config error for {slug}: no seasons configured or discovered.")
 
         # (season, my_team_id, my_games, all_games, standings_lines) per season
         loaded: List[Tuple[Dict[str, Any], int, List[Game], List[Game], List[str]]] = []
@@ -566,7 +725,8 @@ def main() -> None:
             league_name = str(season.get("league_name") or team_name)
             games_url, standings_url = season_urls(season)
 
-            all_games = parse_games(fetch_json(games_url))
+            key = f"{season.get('competition_id')}:{season.get('stage_id')}"
+            all_games = prefetched.get(key) or parse_games(fetch_json(games_url))
 
             my_team_id: Optional[int] = int(season["team_id"]) if season.get("team_id") is not None else None
             if my_team_id is None:

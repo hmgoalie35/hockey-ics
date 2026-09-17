@@ -11,9 +11,15 @@ teams:
     aliases:
       - "alligator-skinners-winter-2026-d3"
 
-    # Bond Sports competitions this team has played in. The team's numeric ID
-    # is resolved automatically each run by matching `name` against the teams
-    # in the schedule, so new seasons only need a competition + stage.
+    # Season auto-discovery. Every season of this Bond Sports program is
+    # checked for a team named `name`; matches are added to the feed and
+    # remembered in docs/_state/<slug>.json, so nothing here needs editing
+    # when a new season starts. The id comes from the league's URL:
+    #   https://bondsports.co/activity/programs/adult-hockey/12070/season/...
+    program_id: 12070
+
+    # Explicit seasons are always included too (useful as a fallback). The
+    # team's numeric ID is resolved by matching `name` against the schedule.
     seasons:
       - league_name: "Winter 2026 Division 3"
         competition_id: "180251ce-9fbc-4153-b7f6-ce3530a2c7f9"
