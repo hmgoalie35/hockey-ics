@@ -1,14 +1,15 @@
-"""TEMPORARY probe: explore the Bond Sports API from a GitHub runner."""
+"""TEMPORARY probe v3: explore the Bond Sports API from a GitHub runner."""
 import json, os, re, requests
+from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urljoin
 
 H = {"Accept": "application/json, text/plain, */*",
      "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/128 Safari/537.36",
      "Origin": "https://bondsports.co", "Referer": "https://bondsports.co/"}
 API = "https://api.bondsports.co/"
-UUID = "180251ce-9fbc-4153-b7f6-ce3530a2c7f9"
-STAGE = 153
-TEAM = 1254
+A = "180251ce-9fbc-4153-b7f6-ce3530a2c7f9"   # Alligator Skinners Winter 2026 D3, stage 153
+B = "4fd5e832-5d86-400a-af3f-7a01c20d1e4e"   # Orcas Winter 2026 6A, stage 160
+C = "00d2c916-8370-463c-8d83-01c9ce2de443"   # Grocery Sticks Winter 2026 5A, stage 158
 
 def shrink(x):
     if isinstance(x, list):
@@ -19,104 +20,90 @@ def shrink(x):
         return x[:200] + "..."
     return x
 
-def get(u, limit=5000):
+def get(u, limit=3000):
     print("\n" + "=" * 100 + f"\nGET {u}")
     try:
         r = requests.get(u, headers=H, timeout=30)
-        print("STATUS", r.status_code, "CT", r.headers.get("content-type"), "LEN", len(r.content))
+        print("STATUS", r.status_code, "LEN", len(r.content))
         try:
             d = r.json()
         except Exception:
             print(r.text[:800]); return None
-        top = f"list[{len(d)}]" if isinstance(d, list) else f"dict keys={list(d.keys())}"
-        print("TOP", top)
         print(json.dumps(shrink(d), indent=1)[:limit])
         return d if r.ok else None
     except Exception as e:
         print("ERR", e); return None
 
-def find_all(obj, key, out=None):
-    out = out if out is not None else []
-    if isinstance(obj, dict):
-        for k, v in obj.items():
-            if k == key: out.append(v)
-            find_all(v, key, out)
-    elif isinstance(obj, list):
-        for i in obj: find_all(i, key, out)
-    return out
+def games_summary(d):
+    if not isinstance(d, list):
+        return str(d)[:200]
+    teams = sorted({t["name"] for g in d for t in (g["homeTeam"], g["awayTeam"])})
+    divs = sorted({g["homeTeam"].get("divisionName") or "" for g in d})
+    starts = sorted(g["startDateTime"] for g in d)
+    return f"games={len(d)} stages={sorted({g.get('stageName') for g in d})} divs={divs} span={starts[0] if starts else None}..{starts[-1] if starts else None} teams={teams}"
 
-# --- Competition-level (uuid known) ---
-comp = get(f"{API}v4/competitions/{UUID}")
-get(f"{API}v4/competitions/{UUID}/stages")
-get(f"{API}v4/competitions/{UUID}/stages/{STAGE}")
-games = get(f"{API}v4/competitions/{UUID}/stages/{STAGE}/game-scores?teamId={TEAM}", limit=2500)
-get(f"{API}v4/competitions/{UUID}/stages/{STAGE}/standings", limit=2500)
-for tail in ["public-settings", "teams", "divisions", "rosters", f"stages/{STAGE}/rosters", f"stages/{STAGE}/teams", "program-season", "season"]:
-    get(f"{API}v4/competitions/{UUID}/{tail}", limit=1500)
+print("#" * 100 + "\n# 1) Is the competition UUID enforced per stage?")
+for uuid, stage in [(A, 160), (A, 158), (B, 153), (A, 153)]:
+    r = requests.get(f"{API}v4/competitions/{uuid}/stages/{stage}/game-scores", headers=H, timeout=30)
+    body = r.json() if r.headers.get("content-type", "").startswith("application/json") else r.text[:300]
+    print(f"\n{uuid[:8]}/stages/{stage}: STATUS {r.status_code} -> {games_summary(body) if r.ok else str(body)[:300]}")
 
-# --- Organization-level ---
-org_ids = set(str(x) for x in find_all(comp, "organizationId") + find_all(games, "organizationId") if x is not None)
-org_ids |= set(x.strip() for x in os.environ.get("ORG_IDS", "").split(",") if x.strip())
-print("\n\nORG IDS:", org_ids)
-program_ids, season_ids = set(), set()
-for org in sorted(org_ids):
-    get(f"{API}v1/organizations/{org}", limit=1500)
-    get(f"{API}v4/organizations/{org}", limit=1500)
-    get(f"{API}v1/organizations/{org}/leagues", limit=3000)
-    for pt in (0, 10):
-        d = get(f"{API}v1/programs/organization/{org}/{pt}", limit=3000)
-        for pid in find_all(d, "id")[:0]: pass
-    d = get(f"{API}v4/organizations/{org}/programs?programTypes=league&includePast=true&itemsPerPage=50", limit=4000)
-    d2 = get(f"{API}v4/organizations/{org}/programs?includePast=true&expand=sessions&itemsPerPage=50", limit=6000)
-    get(f"{API}v4/organizations/{org}/competitions", limit=4000)
-    get(f"{API}v4/organizations/{org}/sessions?includePast=true&itemsPerPage=50", limit=4000)
-    get(f"{API}v4/organizations/{org}/program-seasons?includePast=true", limit=3000)
-    get(f"{API}v4/competitions?organizationId={org}", limit=3000)
-    for d_ in (d, d2):
-        if isinstance(d_, dict):
-            for p in (d_.get("data") or []):
-                if isinstance(p, dict) and p.get("id") is not None:
-                    program_ids.add(p["id"])
-                    for s in ((p.get("sessions") or {}).get("data") if isinstance(p.get("sessions"), dict) else (p.get("sessions") or [])) or []:
-                        if isinstance(s, dict) and s.get("id") is not None: season_ids.add(s["id"])
-
-print("\n\nPROGRAM IDS:", sorted(program_ids)[:20], "SEASON IDS:", sorted(season_ids)[:40])
-for pid in sorted(program_ids)[:3]:
-    get(f"{API}v1/programs/{pid}", limit=2000)
-    d = get(f"{API}v1/programs/{pid}/seasons", limit=4000)
-    for sid in find_all(d, "id")[:0]: pass
-    get(f"{API}v1/programs/program/{pid}/sessions/landing-page", limit=3000)
-    get(f"{API}v4/programs/{pid}/sessions?includePast=true&itemsPerPage=50", limit=4000)
-    for s in ((d or {}).get("data") if isinstance(d, dict) else (d or [])) or []:
-        if isinstance(s, dict) and s.get("id") is not None: season_ids.add(s["id"])
-for sid in sorted(season_ids)[:6]:
-    for u in [f"v4/program-seasons/{sid}", f"v4/program-seasons/{sid}/competition", f"v4/competitions/program-season/{sid}",
-              f"v4/competitions/by-program-season/{sid}", f"v4/sessions/{sid}", f"v4/competitions/sessions/{sid}",
-              f"v1/programs/program/0/session/{sid}/landing-page"]:
-        get(f"{API}{u}", limit=2000)
-
-# --- Scrape the consumer web app JS bundles for API route templates ---
-for page in ["https://bondsports.co/", "https://bondsports.co/activity/leagues/adult-hockey-league/658"]:
-    print("\n" + "#" * 100 + f"\nPAGE {page}")
+print("\n" + "#" * 100 + "\n# 2) Enumerate stage ids under competition A")
+def probe_stage(stage):
     try:
-        r = requests.get(page, headers={"User-Agent": H["User-Agent"]}, timeout=30)
-        html = r.text
-        print("STATUS", r.status_code, "LEN", len(html))
-        print(html[:1500])
-        scripts = re.findall(r'<script[^>]+src="([^"]+)"', html)
-        print("SCRIPTS", scripts[:30])
-        found = set()
-        for s in scripts[:40]:
-            su = urljoin(page, s)
-            try:
-                js = requests.get(su, headers={"User-Agent": H["User-Agent"]}, timeout=60).text
-            except Exception as e:
-                print("JS ERR", su, e); continue
-            for m in re.findall(r'["`\']([^"`\']{0,80}(?:v[1-4]/|api\.bondsports)[^"`\']{0,160})["`\']', js):
-                found.add(m)
-            for m in re.findall(r'["`\'][^"`\']{0,80}(?:competitions|standings|game-scores|program-seasons|my-teams)[^"`\']{0,120}["`\']', js):
-                found.add(m)
-        print("ROUTES FOUND:", len(found))
-        for f in sorted(found): print("   ", f)
+        r = requests.get(f"{API}v4/competitions/{A}/stages/{stage}/game-scores", headers=H, timeout=30)
+        if r.ok:
+            return stage, r.status_code, games_summary(r.json())
+        return stage, r.status_code, (r.json().get("message") if "json" in r.headers.get("content-type", "") else r.text[:120])
     except Exception as e:
-        print("ERR", e)
+        return stage, "ERR", str(e)[:120]
+with ThreadPoolExecutor(8) as ex:
+    for stage, status, info in ex.map(probe_stage, range(100, 420)):
+        if status == 200 or stage in (150, 153, 160, 200, 300):
+            print(f"stage {stage}: {status} {info}")
+
+print("\n" + "#" * 100 + "\n# 3) More competition-level guesses")
+for u in [f"v4/standings-integration/competitions/{A}", f"v4/consumer/competitions/{A}", f"v4/competitions/{A}/info",
+          f"v4/competitions/{A}/details", f"v4/competitions/{A}/summary", f"v4/competitions/{A}/stages/153/games",
+          f"v4/competitions/{A}/stages/153/schedule", f"v4/competitions/{A}/stages/153/divisions",
+          f"v4/competitions/{A}/game-scores", f"v4/competitions/{A}/standings", f"v4/competitions/uuid/{A}",
+          f"v4/league-standings/competitions/{A}", f"v4/leagues/competitions/{A}"]:
+    get(f"{API}{u}", limit=1200)
+
+print("\n" + "#" * 100 + "\n# 4) Next.js bundles of bondsports.co (consumer app) -> API route templates")
+UA = {"User-Agent": H["User-Agent"]}
+html = requests.get("https://bondsports.co/some-page-that-does-not-exist", headers=UA, timeout=30).text
+m = re.search(r'/_next/static/([^/"]+)/_buildManifest\.js', html)
+build = m.group(1) if m else None
+print("BUILD ID:", build)
+chunks = set(re.findall(r'<script[^>]+src="([^"]+)"', html))
+if build:
+    bm = requests.get(f"https://bondsports.co/_next/static/{build}/_buildManifest.js", headers=UA, timeout=30).text
+    print("BUILD MANIFEST (first 6000 chars):\n", bm[:6000])
+    for c in re.findall(r'"(static/chunks/[^"]+\.js)"', bm):
+        chunks.add("/_next/" + c)
+    pages = re.findall(r'"(/[^"]*)":\[', bm)
+    print("PAGES:", pages)
+print("CHUNKS:", len(chunks))
+found, ctx = set(), []
+def fetch_chunk(c):
+    try:
+        return c, requests.get(urljoin("https://bondsports.co/", c), headers=UA, timeout=60).text
+    except Exception as e:
+        return c, ""
+with ThreadPoolExecutor(8) as ex:
+    for c, js in ex.map(fetch_chunk, sorted(chunks)):
+        for m in re.findall(r'[`"\']([^`"\']{0,80}(?:v[1-4]/|api\.bondsports)[^`"\']{0,200})[`"\']', js):
+            found.add(m)
+        for kw in ("game-scores", "standingsAndScoresLink", "standingsFor", "/standings", "competitionId", "competitionUuid", "stageId"):
+            for mm in re.finditer(re.escape(kw), js):
+                s = max(0, mm.start() - 250); e = min(len(js), mm.end() + 250)
+                ctx.append(f"[{c.split('/')[-1]}] ...{js[s:e]}...")
+print("\nROUTE TEMPLATES:", len(found))
+for f in sorted(found): print("   ", f)
+print("\nCONTEXT SNIPPETS:", len(ctx))
+seen = set()
+for s in ctx[:80]:
+    k = s[:120]
+    if k in seen: continue
+    seen.add(k); print("\n" + s.replace("\n", " "))
