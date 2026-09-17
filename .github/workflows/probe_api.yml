@@ -1,0 +1,28 @@
+# TEMPORARY: probes the Bond Sports API from a GitHub runner (the API is not
+# reachable from the authoring sandbox). Will be removed before merge.
+name: Probe Bond Sports API
+
+on:
+  workflow_dispatch:
+    inputs:
+      org_ids:
+        description: "Extra organization ids to probe (comma separated)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install requests
+      - name: Probe
+        env:
+          ORG_IDS: ${{ github.event.inputs.org_ids }}
+        run: python .github/probe_api.py
