@@ -1,4 +1,141 @@
 {
+  "discovery": {
+    "stages": {
+      "00d2c916-8370-463c-8d83-01c9ce2de443:158": {
+        "season_name": "Winter 2026: Division 5a",
+        "stage_name": "Regular Season",
+        "team": false
+      },
+      "00d2c916-8370-463c-8d83-01c9ce2de443:482": {
+        "season_name": "Winter 2026: Division 5a",
+        "stage_name": "Playoffs",
+        "team": false
+      },
+      "176e2e2e-6a29-41f7-8c31-eef77521fbb4:154": {
+        "season_name": "Winter 2026: Division 1",
+        "stage_name": "Regular Season",
+        "team": false
+      },
+      "176e2e2e-6a29-41f7-8c31-eef77521fbb4:435": {
+        "season_name": "Winter 2026: Division 1",
+        "stage_name": "Playoffs",
+        "team": false
+      },
+      "180251ce-9fbc-4153-b7f6-ce3530a2c7f9:153": {
+        "league_name": "Winter 2026 Division 3",
+        "season_name": "Winter 2026: Division 3",
+        "stage_name": "Regular Season",
+        "team": true
+      },
+      "180251ce-9fbc-4153-b7f6-ce3530a2c7f9:444": {
+        "league_name": "Winter 2026 Division 3 Playoffs",
+        "season_name": "Winter 2026: Division 3",
+        "stage_name": "Playoffs",
+        "team": true
+      },
+      "1c6fb981-3f1e-4e32-9a0f-3b022206c50f:159": {
+        "season_name": "Winter 2026: Division 5b",
+        "stage_name": "Regular Season",
+        "team": false
+      },
+      "1c6fb981-3f1e-4e32-9a0f-3b022206c50f:496": {
+        "season_name": "Winter 2026: Division 5b",
+        "stage_name": "Playoffs",
+        "team": false
+      },
+      "2e771543-c23f-4b91-af54-ea4ae017881c:226": {
+        "season_name": "Winter 2026: Division 7",
+        "stage_name": "Regular Season",
+        "team": false
+      },
+      "2e771543-c23f-4b91-af54-ea4ae017881c:865": {
+        "season_name": "Winter 2026: Division 7",
+        "stage_name": "Playoffs",
+        "team": false
+      },
+      "3e09cfb1-7405-4979-a107-f2178e396344:161": {
+        "season_name": "Winter 2026: Division 6b",
+        "stage_name": "Regular Season",
+        "team": false
+      },
+      "3e09cfb1-7405-4979-a107-f2178e396344:438": {
+        "season_name": "Winter 2026: Division 6b",
+        "stage_name": "Playoffs",
+        "team": false
+      },
+      "3fb7a41f-edf6-4d12-b864-b08cb6467f1c:227": {
+        "season_name": "Winter 2026: Division 8a",
+        "stage_name": "Regular Season",
+        "team": false
+      },
+      "3fb7a41f-edf6-4d12-b864-b08cb6467f1c:888": {
+        "season_name": "Winter 2026: Division 8a",
+        "stage_name": "Playoffs",
+        "team": false
+      },
+      "4fd5e832-5d86-400a-af3f-7a01c20d1e4e:160": {
+        "season_name": "Winter 2026: Division 6a",
+        "stage_name": "Regular Season",
+        "team": false
+      },
+      "4fd5e832-5d86-400a-af3f-7a01c20d1e4e:437": {
+        "season_name": "Winter 2026: Division 6a",
+        "stage_name": "Playoffs",
+        "team": false
+      },
+      "5e062127-cccc-4ae5-a51d-5079ab375737:156": {
+        "season_name": "Winter 2026: Division 2",
+        "stage_name": "Regular Season",
+        "team": false
+      },
+      "5e062127-cccc-4ae5-a51d-5079ab375737:436": {
+        "season_name": "Winter 2026: Division 2",
+        "stage_name": "Playoffs",
+        "team": false
+      },
+      "65d3cffb-cd2b-4be3-bf3a-d226ac629aba:157": {
+        "season_name": "Winter 2026: Division 4",
+        "stage_name": "Regular Season",
+        "team": false
+      },
+      "65d3cffb-cd2b-4be3-bf3a-d226ac629aba:495": {
+        "season_name": "Winter 2026: Division 4",
+        "stage_name": "Playoffs",
+        "team": false
+      },
+      "67561257-dca0-4770-b298-559f07ea02ed:1156": {
+        "league_name": "Division 3",
+        "season_name": "Fall 2026",
+        "stage_name": "Regular Season",
+        "team": true
+      },
+      "67561257-dca0-4770-b298-559f07ea02ed:1157": {
+        "season_name": "Fall 2026",
+        "stage_name": "Playoffs",
+        "team": false
+      },
+      "752f4a94-03d4-4081-b398-dcbb04b99c89:228": {
+        "season_name": "Winter 2026: Division 8b",
+        "stage_name": "Regular Season",
+        "team": false
+      },
+      "752f4a94-03d4-4081-b398-dcbb04b99c89:913": {
+        "season_name": "Winter 2026: Division 8b",
+        "stage_name": "Playoffs",
+        "team": false
+      },
+      "d4d11f60-35f6-4d8a-b582-33373d5c5db1:198": {
+        "season_name": "Winter 2026: Over 40",
+        "stage_name": "Regular Season",
+        "team": false
+      },
+      "d4d11f60-35f6-4d8a-b582-33373d5c5db1:473": {
+        "season_name": "Winter 2026: Over 40",
+        "stage_name": "Playoffs",
+        "team": false
+      }
+    }
+  },
   "events": {
     "4416839": {
       "as_of": "2026-02-07 22:48 UTC",
@@ -236,6 +373,257 @@
         "10. The Pigeons (4-7, 10 pts)",
         "11. Bulldogs (3-8, 8 pts)",
         "12. Hellfish (0-12, 0 pts)"
+      ]
+    },
+    "5135669": {
+      "as_of": "2026-09-17 22:49 UTC",
+      "lines": [
+        "1. Psycho Jackpot (4-0, 8 pts)",
+        "2. Mighty Bucks (2-2, 4 pts)",
+        "3. Naughty Otters (1-1, 2 pts)",
+        "4. Dirty Mike and the Boys (1-1, 2 pts)",
+        "5. Yeti (0-1, 0 pts)",
+        "6. Proberts Selects (0-1, 0 pts)",
+        "7. Alligator Skinners (0-1, 0 pts)",
+        "8. Crusaders (0-1, 0 pts)"
+      ]
+    },
+    "6417072": {
+      "as_of": "2026-09-17 22:49 UTC",
+      "lines": [
+        "0. Alligator Skinners (0-0, 0 pts)",
+        "0. Backdoor Bandits (0-0, 0 pts)",
+        "0. Bulldogs (0-0, 0 pts)",
+        "0. Crusaders (0-0, 0 pts)",
+        "0. Dirty Mike and the Boys (0-0, 0 pts)",
+        "0. Hellfish (0-0, 0 pts)",
+        "0. Hockertunities (0-0, 0 pts)",
+        "0. Mighty Bucks (0-0, 0 pts)",
+        "0. Naughty Otters (0-0, 0 pts)",
+        "0. Psycho Jackpot (0-0, 0 pts)",
+        "0. The Pigeons (0-0, 0 pts)",
+        "0. Yeti (0-0, 0 pts)"
+      ]
+    },
+    "6417078": {
+      "as_of": "2026-09-17 22:49 UTC",
+      "lines": [
+        "0. Alligator Skinners (0-0, 0 pts)",
+        "0. Backdoor Bandits (0-0, 0 pts)",
+        "0. Bulldogs (0-0, 0 pts)",
+        "0. Crusaders (0-0, 0 pts)",
+        "0. Dirty Mike and the Boys (0-0, 0 pts)",
+        "0. Hellfish (0-0, 0 pts)",
+        "0. Hockertunities (0-0, 0 pts)",
+        "0. Mighty Bucks (0-0, 0 pts)",
+        "0. Naughty Otters (0-0, 0 pts)",
+        "0. Psycho Jackpot (0-0, 0 pts)",
+        "0. The Pigeons (0-0, 0 pts)",
+        "0. Yeti (0-0, 0 pts)"
+      ]
+    },
+    "6417085": {
+      "as_of": "2026-09-17 22:49 UTC",
+      "lines": [
+        "0. Alligator Skinners (0-0, 0 pts)",
+        "0. Backdoor Bandits (0-0, 0 pts)",
+        "0. Bulldogs (0-0, 0 pts)",
+        "0. Crusaders (0-0, 0 pts)",
+        "0. Dirty Mike and the Boys (0-0, 0 pts)",
+        "0. Hellfish (0-0, 0 pts)",
+        "0. Hockertunities (0-0, 0 pts)",
+        "0. Mighty Bucks (0-0, 0 pts)",
+        "0. Naughty Otters (0-0, 0 pts)",
+        "0. Psycho Jackpot (0-0, 0 pts)",
+        "0. The Pigeons (0-0, 0 pts)",
+        "0. Yeti (0-0, 0 pts)"
+      ]
+    },
+    "6417093": {
+      "as_of": "2026-09-17 22:49 UTC",
+      "lines": [
+        "0. Alligator Skinners (0-0, 0 pts)",
+        "0. Backdoor Bandits (0-0, 0 pts)",
+        "0. Bulldogs (0-0, 0 pts)",
+        "0. Crusaders (0-0, 0 pts)",
+        "0. Dirty Mike and the Boys (0-0, 0 pts)",
+        "0. Hellfish (0-0, 0 pts)",
+        "0. Hockertunities (0-0, 0 pts)",
+        "0. Mighty Bucks (0-0, 0 pts)",
+        "0. Naughty Otters (0-0, 0 pts)",
+        "0. Psycho Jackpot (0-0, 0 pts)",
+        "0. The Pigeons (0-0, 0 pts)",
+        "0. Yeti (0-0, 0 pts)"
+      ]
+    },
+    "6417099": {
+      "as_of": "2026-09-17 22:49 UTC",
+      "lines": [
+        "0. Alligator Skinners (0-0, 0 pts)",
+        "0. Backdoor Bandits (0-0, 0 pts)",
+        "0. Bulldogs (0-0, 0 pts)",
+        "0. Crusaders (0-0, 0 pts)",
+        "0. Dirty Mike and the Boys (0-0, 0 pts)",
+        "0. Hellfish (0-0, 0 pts)",
+        "0. Hockertunities (0-0, 0 pts)",
+        "0. Mighty Bucks (0-0, 0 pts)",
+        "0. Naughty Otters (0-0, 0 pts)",
+        "0. Psycho Jackpot (0-0, 0 pts)",
+        "0. The Pigeons (0-0, 0 pts)",
+        "0. Yeti (0-0, 0 pts)"
+      ]
+    },
+    "6417106": {
+      "as_of": "2026-09-17 22:49 UTC",
+      "lines": [
+        "0. Alligator Skinners (0-0, 0 pts)",
+        "0. Backdoor Bandits (0-0, 0 pts)",
+        "0. Bulldogs (0-0, 0 pts)",
+        "0. Crusaders (0-0, 0 pts)",
+        "0. Dirty Mike and the Boys (0-0, 0 pts)",
+        "0. Hellfish (0-0, 0 pts)",
+        "0. Hockertunities (0-0, 0 pts)",
+        "0. Mighty Bucks (0-0, 0 pts)",
+        "0. Naughty Otters (0-0, 0 pts)",
+        "0. Psycho Jackpot (0-0, 0 pts)",
+        "0. The Pigeons (0-0, 0 pts)",
+        "0. Yeti (0-0, 0 pts)"
+      ]
+    },
+    "6417113": {
+      "as_of": "2026-09-17 22:49 UTC",
+      "lines": [
+        "0. Alligator Skinners (0-0, 0 pts)",
+        "0. Backdoor Bandits (0-0, 0 pts)",
+        "0. Bulldogs (0-0, 0 pts)",
+        "0. Crusaders (0-0, 0 pts)",
+        "0. Dirty Mike and the Boys (0-0, 0 pts)",
+        "0. Hellfish (0-0, 0 pts)",
+        "0. Hockertunities (0-0, 0 pts)",
+        "0. Mighty Bucks (0-0, 0 pts)",
+        "0. Naughty Otters (0-0, 0 pts)",
+        "0. Psycho Jackpot (0-0, 0 pts)",
+        "0. The Pigeons (0-0, 0 pts)",
+        "0. Yeti (0-0, 0 pts)"
+      ]
+    },
+    "6417119": {
+      "as_of": "2026-09-17 22:49 UTC",
+      "lines": [
+        "0. Alligator Skinners (0-0, 0 pts)",
+        "0. Backdoor Bandits (0-0, 0 pts)",
+        "0. Bulldogs (0-0, 0 pts)",
+        "0. Crusaders (0-0, 0 pts)",
+        "0. Dirty Mike and the Boys (0-0, 0 pts)",
+        "0. Hellfish (0-0, 0 pts)",
+        "0. Hockertunities (0-0, 0 pts)",
+        "0. Mighty Bucks (0-0, 0 pts)",
+        "0. Naughty Otters (0-0, 0 pts)",
+        "0. Psycho Jackpot (0-0, 0 pts)",
+        "0. The Pigeons (0-0, 0 pts)",
+        "0. Yeti (0-0, 0 pts)"
+      ]
+    },
+    "6417120": {
+      "as_of": "2026-09-17 22:49 UTC",
+      "lines": [
+        "0. Alligator Skinners (0-0, 0 pts)",
+        "0. Backdoor Bandits (0-0, 0 pts)",
+        "0. Bulldogs (0-0, 0 pts)",
+        "0. Crusaders (0-0, 0 pts)",
+        "0. Dirty Mike and the Boys (0-0, 0 pts)",
+        "0. Hellfish (0-0, 0 pts)",
+        "0. Hockertunities (0-0, 0 pts)",
+        "0. Mighty Bucks (0-0, 0 pts)",
+        "0. Naughty Otters (0-0, 0 pts)",
+        "0. Psycho Jackpot (0-0, 0 pts)",
+        "0. The Pigeons (0-0, 0 pts)",
+        "0. Yeti (0-0, 0 pts)"
+      ]
+    },
+    "6417128": {
+      "as_of": "2026-09-17 22:49 UTC",
+      "lines": [
+        "0. Alligator Skinners (0-0, 0 pts)",
+        "0. Backdoor Bandits (0-0, 0 pts)",
+        "0. Bulldogs (0-0, 0 pts)",
+        "0. Crusaders (0-0, 0 pts)",
+        "0. Dirty Mike and the Boys (0-0, 0 pts)",
+        "0. Hellfish (0-0, 0 pts)",
+        "0. Hockertunities (0-0, 0 pts)",
+        "0. Mighty Bucks (0-0, 0 pts)",
+        "0. Naughty Otters (0-0, 0 pts)",
+        "0. Psycho Jackpot (0-0, 0 pts)",
+        "0. The Pigeons (0-0, 0 pts)",
+        "0. Yeti (0-0, 0 pts)"
+      ]
+    },
+    "6417137": {
+      "as_of": "2026-09-17 22:49 UTC",
+      "lines": [
+        "0. Alligator Skinners (0-0, 0 pts)",
+        "0. Backdoor Bandits (0-0, 0 pts)",
+        "0. Bulldogs (0-0, 0 pts)",
+        "0. Crusaders (0-0, 0 pts)",
+        "0. Dirty Mike and the Boys (0-0, 0 pts)",
+        "0. Hellfish (0-0, 0 pts)",
+        "0. Hockertunities (0-0, 0 pts)",
+        "0. Mighty Bucks (0-0, 0 pts)",
+        "0. Naughty Otters (0-0, 0 pts)",
+        "0. Psycho Jackpot (0-0, 0 pts)",
+        "0. The Pigeons (0-0, 0 pts)",
+        "0. Yeti (0-0, 0 pts)"
+      ]
+    },
+    "6417143": {
+      "as_of": "2026-09-17 22:49 UTC",
+      "lines": [
+        "0. Alligator Skinners (0-0, 0 pts)",
+        "0. Backdoor Bandits (0-0, 0 pts)",
+        "0. Bulldogs (0-0, 0 pts)",
+        "0. Crusaders (0-0, 0 pts)",
+        "0. Dirty Mike and the Boys (0-0, 0 pts)",
+        "0. Hellfish (0-0, 0 pts)",
+        "0. Hockertunities (0-0, 0 pts)",
+        "0. Mighty Bucks (0-0, 0 pts)",
+        "0. Naughty Otters (0-0, 0 pts)",
+        "0. Psycho Jackpot (0-0, 0 pts)",
+        "0. The Pigeons (0-0, 0 pts)",
+        "0. Yeti (0-0, 0 pts)"
+      ]
+    },
+    "6417149": {
+      "as_of": "2026-09-17 22:49 UTC",
+      "lines": [
+        "0. Alligator Skinners (0-0, 0 pts)",
+        "0. Backdoor Bandits (0-0, 0 pts)",
+        "0. Bulldogs (0-0, 0 pts)",
+        "0. Crusaders (0-0, 0 pts)",
+        "0. Dirty Mike and the Boys (0-0, 0 pts)",
+        "0. Hellfish (0-0, 0 pts)",
+        "0. Hockertunities (0-0, 0 pts)",
+        "0. Mighty Bucks (0-0, 0 pts)",
+        "0. Naughty Otters (0-0, 0 pts)",
+        "0. Psycho Jackpot (0-0, 0 pts)",
+        "0. The Pigeons (0-0, 0 pts)",
+        "0. Yeti (0-0, 0 pts)"
+      ]
+    },
+    "6417153": {
+      "as_of": "2026-09-17 22:49 UTC",
+      "lines": [
+        "0. Alligator Skinners (0-0, 0 pts)",
+        "0. Backdoor Bandits (0-0, 0 pts)",
+        "0. Bulldogs (0-0, 0 pts)",
+        "0. Crusaders (0-0, 0 pts)",
+        "0. Dirty Mike and the Boys (0-0, 0 pts)",
+        "0. Hellfish (0-0, 0 pts)",
+        "0. Hockertunities (0-0, 0 pts)",
+        "0. Mighty Bucks (0-0, 0 pts)",
+        "0. Naughty Otters (0-0, 0 pts)",
+        "0. Psycho Jackpot (0-0, 0 pts)",
+        "0. The Pigeons (0-0, 0 pts)",
+        "0. Yeti (0-0, 0 pts)"
       ]
     }
   }
