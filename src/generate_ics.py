@@ -564,6 +564,21 @@ def fetch_season_competition(season_id: int) -> Optional[Dict[str, Any]]:
     return {"uuid": str(raw["uuid"]), "name": raw.get("name"), "stages": stages}
 
 
+def league_label(season_name: str, division_name: Optional[str], stage_name: Optional[str], stage_type: Optional[str]) -> str:
+    """'Fall 2026' + 'Division 3' -> 'Fall 2026 Division 3'; 'Winter 2026: Division 3' -> 'Winter 2026 Division 3'."""
+    division = (division_name or "").replace(":", "").strip()
+    season = (season_name or "").replace(":", "").strip()
+    if not division:
+        label = season or "League"
+    elif season and season.lower() not in division.lower():
+        label = f"{season} {division}"
+    else:
+        label = division
+    if (stage_type or "").lower() == "playoffs" or (stage_name or "").lower() == "playoffs":
+        label = f"{label} Playoffs"
+    return label
+
+
 def discover_team_seasons(
     program_id: int,
     match_names: List[str],
@@ -581,13 +596,20 @@ def discover_team_seasons(
     season is still running, since schedules can be published late.
     """
     stage_cache: Dict[str, Any] = cache.setdefault("stages", {})
+    season_cache: Dict[str, Any] = cache.setdefault("seasons", {})
     seasons_out: List[Dict[str, Any]] = []
     prefetched: Dict[str, List[Game]] = {}
+
+    def entry_label(entry: Dict[str, Any]) -> str:
+        if "division_name" in entry or "season_name" in entry:
+            return league_label(entry.get("season_name") or "", entry.get("division_name"),
+                                entry.get("stage_name"), entry.get("stage_type"))
+        return entry.get("league_name") or "League"
 
     def add_from_cache(key: str, entry: Dict[str, Any]) -> None:
         uuid, stage_id = key.split(":")
         seasons_out.append({
-            "league_name": entry.get("league_name") or entry.get("season_name") or "League",
+            "league_name": entry_label(entry),
             "competition_id": uuid,
             "stage_id": int(stage_id),
             "discovered": True,
@@ -595,14 +617,20 @@ def discover_team_seasons(
 
     seen_keys = set()
     for season in fetch_program_seasons(program_id):
-        comp = fetch_season_competition(season["id"])
+        season_over = season["end"] is not None and season["end"] < now - timedelta(days=7)
+        skey = str(season["id"])
+        # Finished seasons can't grow new stages: reuse the cached competition.
+        if season_over and skey in season_cache:
+            comp = season_cache[skey]
+        else:
+            comp = fetch_season_competition(season["id"])
+            season_cache[skey] = comp
         if not comp:
             continue
         for st in comp["stages"]:
             key = f"{comp['uuid']}:{st['id']}"
             seen_keys.add(key)
             cached = stage_cache.get(key)
-            season_over = season["end"] is not None and season["end"] < now - timedelta(days=7)
             if cached and cached.get("team"):
                 add_from_cache(key, cached)
                 continue
@@ -611,17 +639,14 @@ def discover_team_seasons(
 
             games = parse_games(fetch_json(f"{BOND_API}/competitions/{comp['uuid']}/stages/{st['id']}/game-scores"))
             team_id = resolve_team_id(games, match_names)
-            entry = {"team": team_id is not None, "season_name": season["name"], "stage_name": st.get("name")}
+            entry = {"team": team_id is not None, "season_name": season["name"],
+                     "stage_name": st.get("name"), "stage_type": st.get("type")}
             if team_id is not None:
                 mine = next((t for g in games for t in (g.home, g.away) if t.id == team_id), None)
-                division = (mine.division_name if mine else None) or ""
-                # e.g. "Fall 2026: Division 3"; fall back to the season name
-                league_name = division.replace(":", "") if division else season["name"]
-                if (st.get("type") or "").lower() == "playoffs" or (st.get("name") or "").lower() == "playoffs":
-                    league_name = f"{league_name} Playoffs"
-                entry["league_name"] = league_name
+                entry["division_name"] = (mine.division_name if mine else None) or ""
+                entry["league_name"] = entry_label(entry)
                 prefetched[key] = games
-                print(f"  discovered: {league_name} (competition {comp['uuid']}, stage {st['id']}, team id {team_id})")
+                print(f"  discovered: {entry['league_name']} (competition {comp['uuid']}, stage {st['id']}, team id {team_id})")
             stage_cache[key] = entry
             if entry["team"]:
                 add_from_cache(key, entry)
@@ -708,7 +733,9 @@ def main() -> None:
                     if entry.get("team"):
                         uuid, stage_id = key.split(":")
                         discovered.append({
-                            "league_name": entry.get("league_name") or entry.get("season_name") or "League",
+                            "league_name": league_label(entry.get("season_name") or "", entry.get("division_name"),
+                                                        entry.get("stage_name"), entry.get("stage_type"))
+                            if ("division_name" in entry or "season_name" in entry) else (entry.get("league_name") or "League"),
                             "competition_id": uuid, "stage_id": int(stage_id), "discovered": True,
                         })
             known = {(str(s.get("competition_id")), int(s["stage_id"])) for s in seasons if s.get("competition_id")}

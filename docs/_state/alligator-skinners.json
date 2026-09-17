@@ -22,15 +22,19 @@
         "team": false
       },
       "180251ce-9fbc-4153-b7f6-ce3530a2c7f9:153": {
-        "league_name": "Winter 2026 Division 3",
+        "division_name": "Winter 2026 Division 3",
+        "league_name": null,
         "season_name": "Winter 2026: Division 3",
         "stage_name": "Regular Season",
+        "stage_type": "regular_season",
         "team": true
       },
       "180251ce-9fbc-4153-b7f6-ce3530a2c7f9:444": {
-        "league_name": "Winter 2026 Division 3 Playoffs",
+        "division_name": "Winter 2026 Division 3",
+        "league_name": null,
         "season_name": "Winter 2026: Division 3",
         "stage_name": "Playoffs",
+        "stage_type": "playoffs",
         "team": true
       },
       "1c6fb981-3f1e-4e32-9a0f-3b022206c50f:159": {
@@ -104,9 +108,11 @@
         "team": false
       },
       "67561257-dca0-4770-b298-559f07ea02ed:1156": {
-        "league_name": "Division 3",
+        "division_name": "Division 3",
+        "league_name": null,
         "season_name": "Fall 2026",
         "stage_name": "Regular Season",
+        "stage_type": "regular_season",
         "team": true
       },
       "67561257-dca0-4770-b298-559f07ea02ed:1157": {
