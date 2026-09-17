@@ -1,28 +1,20 @@
 output_dir: "docs"
 default_timezone: "America/New_York"
 
+# One entry per team. Each team produces ONE feed (docs/<slug>.ics) that spans
+# every season listed under `seasons`, so the calendar URL never changes.
 teams:
-  - name: "Orcas"
-    slug: "orcas-winter2026-6a"              
-    league_name: "Winter 2026 Division 6A"
-    api_url: "https://api.bondsports.co/v4/competitions/4fd5e832-5d86-400a-af3f-7a01c20d1e4e/stages/160/game-scores"
-    standings_api_url: "https://api.bondsports.co/v4/competitions/4fd5e832-5d86-400a-af3f-7a01c20d1e4e/stages/160/standings"
-    my_team_ids: [1314]           
-    my_team_names: ["Orcas"]  
-
   - name: "Alligator Skinners"
-    slug: "alligator-skinners-winter-2026-d3"
-    league_name: "Winter 2026 Division 3"
-    api_url: "https://api.bondsports.co/v4/competitions/180251ce-9fbc-4153-b7f6-ce3530a2c7f9/stages/153/game-scores"
-    standings_api_url: "https://api.bondsports.co/v4/competitions/180251ce-9fbc-4153-b7f6-ce3530a2c7f9/stages/153/standings"
-    my_team_ids: [1254]
-    my_team_names: ["Alligator Skinners"]
+    slug: "alligator-skinners"
+    # Old per-season feed names are still written (as copies of the main feed)
+    # so existing calendar subscriptions keep working.
+    aliases:
+      - "alligator-skinners-winter-2026-d3"
 
-
-  - name: "Grocery Sticks"
-    slug: "grocery-sticks-winter-2026-d5a"
-    league_name: "Winter 2026 Division 5A"
-    api_url: "https://api.bondsports.co/v4/competitions/00d2c916-8370-463c-8d83-01c9ce2de443/stages/158/game-scores"
-    standings_api_url: "https://api.bondsports.co/v4/competitions/00d2c916-8370-463c-8d83-01c9ce2de443/stages/158/standings"
-    my_team_ids: [1295]
-    my_team_names: ["Grocery Sticks"]
+    # Bond Sports competitions this team has played in. The team's numeric ID
+    # is resolved automatically each run by matching `name` against the teams
+    # in the schedule, so new seasons only need a competition + stage.
+    seasons:
+      - league_name: "Winter 2026 Division 3"
+        competition_id: "180251ce-9fbc-4153-b7f6-ce3530a2c7f9"
+        stage_id: 153

@@ -21,15 +21,25 @@ Config expected:
 output_dir: "docs"
 default_timezone: "America/New_York"
 teams:
-  - name: ...
-    slug: ...
-    league_name: ...
-    api_url: ... game-scores
-    standings_api_url: ... standings   # recommended
-    my_team_ids: [ ... ]               # supports multiple IDs
-    my_team_names: [ ... ]             # same length as ids
-    opponent_recent_max: 20            # optional
-    head_to_head_max: 20               # optional
+  - name: "Alligator Skinners"        # team name as it appears in Bond Sports
+    slug: "alligator-skinners"        # feed file: docs/<slug>.ics (season-agnostic)
+    aliases: ["old-feed-name"]        # optional: extra copies of the feed (legacy URLs)
+    team_names: ["Alligator Skinners"]  # optional: alternate spellings used to find the team
+    calendar_name: "..."              # optional
+    opponent_recent_max: 20           # optional
+    head_to_head_max: 20              # optional
+    seasons:
+      - league_name: "Winter 2026 Division 3"
+        competition_id: "<bond sports competition uuid>"
+        stage_id: 153
+        team_id: 1254                 # optional: resolved by name when omitted
+        # or, instead of competition_id/stage_id:
+        # api_url: ... game-scores
+        # standings_api_url: ... standings
+
+All seasons of a team are merged into one .ics so the subscription URL never
+changes between seasons. Standings snapshots are persisted under
+docs/_state/<slug>.json (keyed by Bond Sports event id, which is global).
 """
 
 from __future__ import annotations
@@ -153,7 +163,11 @@ class Game:
         return (self.status or "").lower() == "final" and self.has_result
 
 
-def parse_games(raw_games: List[Dict[str, Any]]) -> List[Game]:
+def parse_games(raw_games: Any) -> List[Game]:
+    # Bond Sports returns a bare list from the consumer endpoint, but the
+    # paginated variant wraps it as {"data": [...], "meta": {...}}.
+    if isinstance(raw_games, dict):
+        raw_games = raw_games.get("data") or []
     games: List[Game] = []
     for g in raw_games:
         start = parse_iso_z(g["startDateTime"])
@@ -451,6 +465,39 @@ def freeze_for_game(game: Game, now: datetime) -> bool:
 
 
 # -------------------------
+# Seasons & team resolution
+# -------------------------
+
+BOND_API = "https://api.bondsports.co/v4"
+
+
+def season_urls(season: Dict[str, Any]) -> Tuple[str, Optional[str]]:
+    """Return (game_scores_url, standings_url) for a season config entry."""
+    if season.get("api_url"):
+        return str(season["api_url"]), (str(season["standings_api_url"]) if season.get("standings_api_url") else None)
+    comp = season.get("competition_id")
+    stage = season.get("stage_id")
+    if not comp or stage is None:
+        raise SystemExit(f"Season {season.get('league_name')!r}: need competition_id + stage_id (or api_url).")
+    base = f"{BOND_API}/competitions/{comp}/stages/{int(stage)}"
+    return f"{base}/game-scores", f"{base}/standings"
+
+
+def resolve_team_id(all_games: List[Game], names: List[str]) -> Optional[int]:
+    """Find the numeric team id whose name matches one of `names` (case/space-insensitive)."""
+    wanted = {re.sub(r"\s+", " ", n).strip().lower() for n in names if n}
+    for g in all_games:
+        for t in (g.home, g.away):
+            if re.sub(r"\s+", " ", t.name).strip().lower() in wanted:
+                return t.id
+    return None
+
+
+def team_names_in(all_games: List[Game]) -> List[str]:
+    return sorted({t.name for g in all_games for t in (g.home, g.away)})
+
+
+# -------------------------
 # Main
 # -------------------------
 
@@ -484,44 +531,73 @@ def main() -> None:
     now = utc_now()
     run_asof = now.strftime("%Y-%m-%d %H:%M UTC")
 
+    # Deterministic summary of what each feed contains (used by the workflow to
+    # detect a season that has ended with nothing new configured).
+    summary: Dict[str, Any] = {}
+
     for team_entry in teams:
-        league_name = str(team_entry.get("league_name", team_entry.get("name", "League")))
-        slug = str(team_entry.get("slug", slugify(team_entry.get("name", league_name))))
-        games_url = str(team_entry["api_url"])
-        standings_url = team_entry.get("standings_api_url")
+        team_name = str(team_entry["name"])
+        slug = slugify(str(team_entry.get("slug") or team_name))
+        aliases = [slugify(str(a)) for a in (team_entry.get("aliases") or [])]
+        match_names = [team_name] + [str(x) for x in (team_entry.get("team_names") or [])]
+        cal_name = str(team_entry.get("calendar_name") or f"{team_name} — Hockey")
         max_recent = int(team_entry.get("opponent_recent_max", 20))
         h2h_max = int(team_entry.get("head_to_head_max", 20))
 
-        my_ids: List[int] = [int(x) for x in (team_entry.get("my_team_ids") or [])]
-        my_names: List[str] = [str(x) for x in (team_entry.get("my_team_names") or [])]
+        seasons: List[Dict[str, Any]] = list(team_entry.get("seasons") or [])
+        if team_entry.get("api_url"):  # legacy single-season entry
+            seasons.append({
+                "league_name": team_entry.get("league_name", team_name),
+                "api_url": team_entry["api_url"],
+                "standings_api_url": team_entry.get("standings_api_url"),
+                "team_id": (team_entry.get("my_team_ids") or [None])[0],
+            })
+        if not seasons:
+            raise SystemExit(f"Config error for {slug}: no seasons configured.")
 
-        if len(my_ids) != len(my_names) or not my_ids:
-            raise SystemExit(f"Config error for {slug}: my_team_ids and my_team_names must exist and be same length.")
+        namespace = slug
+        state_path = state_dir / f"{namespace}.json"
+        state = load_state(state_path)
+        state_events: Dict[str, Any] = state.setdefault("events", {})
 
-        raw_games = fetch_json(games_url)
-        all_games = parse_games(raw_games)
+        # (season, my_team_id, my_games, all_games, standings_lines) per season
+        loaded: List[Tuple[Dict[str, Any], int, List[Game], List[Game], List[str]]] = []
+        for season in seasons:
+            league_name = str(season.get("league_name") or team_name)
+            games_url, standings_url = season_urls(season)
 
-        for my_team_id, my_team_name in zip(my_ids, my_names):
-            cal_name = f"{my_team_name} — {league_name}"
-            out_file = f"{slug}-{slugify(my_team_name)}.ics" if len(my_ids) > 1 else f"{slug}.ics"
-            namespace = slugify(out_file.replace(".ics", ""))
+            all_games = parse_games(fetch_json(games_url))
 
-            state_path = state_dir / f"{namespace}.json"
-            state = load_state(state_path)
-            state_events: Dict[str, Any] = state.setdefault("events", {})
+            my_team_id: Optional[int] = int(season["team_id"]) if season.get("team_id") is not None else None
+            if my_team_id is None:
+                my_team_id = resolve_team_id(all_games, match_names)
+            if my_team_id is None:
+                raise SystemExit(
+                    f"{slug} / {league_name}: could not find a team named {match_names} in the schedule. "
+                    f"Teams present: {team_names_in(all_games)}"
+                )
 
             standings_lines_current: List[str] = []
             if standings_url:
-                standings_raw = fetch_json(str(standings_url))
-                rows = pick_division_standings(standings_raw, my_team_id=my_team_id)
-                standings_lines_current = format_standings_lines(rows)
+                try:
+                    standings_raw = fetch_json(standings_url)
+                    rows = pick_division_standings(standings_raw, my_team_id=my_team_id)
+                    standings_lines_current = format_standings_lines(rows)
+                except requests.RequestException as e:
+                    print(f"WARN {slug} / {league_name}: standings unavailable ({e}); continuing without.")
 
             my_games = [g for g in all_games if g.involves_team_id(my_team_id)]
             my_games.sort(key=lambda g: g.start)
+            loaded.append(({**season, "league_name": league_name}, my_team_id, my_games, all_games, standings_lines_current))
 
-            vevents: List[str] = []
+        # Oldest season first so the calendar reads chronologically.
+        loaded.sort(key=lambda item: item[2][0].start if item[2] else now)
+
+        vevents: List[str] = []
+        for season, my_team_id, my_games, all_games, standings_lines_current in loaded:
+            league_name = str(season["league_name"])
             for g in my_games:
-                title, my_res, opp_id, opp_name = my_title(my_team_id, my_team_name, g)
+                title, my_res, opp_id, opp_name = my_title(my_team_id, team_name, g)
                 uid = stable_uid(namespace, g.event_id)
 
                 desc: List[str] = []
@@ -536,7 +612,7 @@ def main() -> None:
                 if my_res:
                     desc.append(f"Result: {my_res}")
 
-                # Head-to-head (prior matchups vs opponent)
+                # Head-to-head (prior matchups vs opponent, this season)
                 h2h_lines = head_to_head_lines(
                     all_games=all_games,
                     my_team_id=my_team_id,
@@ -563,23 +639,20 @@ def main() -> None:
                     desc.extend(ascii_rule(f"{opp_name.upper()} GAMES-TO-DATE"))
                     desc.extend(opp_lines)
 
-                # Feature 2: standings snapshot (frozen for past games)
-                if standings_url and standings_lines_current:
-                    key = str(g.event_id)
+                # Feature 2: standings snapshot (frozen for completed games)
+                key = str(g.event_id)
+                if standings_lines_current:
                     if freeze_for_game(g, now):
                         if key not in state_events:
                             state_events[key] = {"as_of": run_asof, "lines": standings_lines_current}
-                        snap = state_events[key]
                     else:
                         state_events[key] = {"as_of": run_asof, "lines": standings_lines_current}
-                        snap = state_events[key]
-
-                    snap_asof = snap.get("as_of", run_asof)
-                    snap_lines = snap.get("lines", [])
-                    if snap_lines:
-                        desc.append("")
-                        desc.extend(ascii_rule(f"STANDINGS (as of {snap_asof})"))
-                        desc.extend([str(x) for x in snap_lines])
+                snap = state_events.get(key) or {}
+                snap_lines = snap.get("lines", [])
+                if snap_lines:
+                    desc.append("")
+                    desc.extend(ascii_rule(f"STANDINGS (as of {snap.get('as_of', run_asof)})"))
+                    desc.extend([str(x) for x in snap_lines])
 
                 vevents.append(
                     build_vevent(
@@ -593,10 +666,22 @@ def main() -> None:
                     )
                 )
 
-            ics_text = build_ics_calendar(cal_name=cal_name, events=vevents)
-            (output_dir / out_file).write_text(ics_text, encoding="utf-8")
-            save_state(state_path, state)
+        ics_text = build_ics_calendar(cal_name=cal_name, events=vevents)
+        for out_name in [slug] + aliases:
+            (output_dir / f"{out_name}.ics").write_text(ics_text, encoding="utf-8")
+        save_state(state_path, state)
 
+        all_my_games = [g for _, _, my_games, _, _ in loaded for g in my_games]
+        summary[slug] = {
+            "seasons": [str(s["league_name"]) for s, *_ in loaded],
+            "games": len(all_my_games),
+            "first_game_start": fmt_dt_utc_for_ics(min(g.start for g in all_my_games)) if all_my_games else None,
+            "last_game_start": fmt_dt_utc_for_ics(max(g.start for g in all_my_games)) if all_my_games else None,
+        }
+        print(f"{slug}: {len(all_my_games)} games across {len(loaded)} season(s) -> {slug}.ics"
+              + (f" (+ aliases: {', '.join(aliases)})" if aliases else ""))
+
+    (state_dir / "summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print("Done. Calendars updated.")
 
 
